@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inline-block-正常流算法小模拟</title>
+    <style>
+        html,body {
+            padding: 0;
+            margin: 0;
+            background-color: #ccc;
+        }
+        section > h1 {
+            text-align: center;
+        }
+        .container {
+            position: relative;
+            width: 1200px;
+            height: 800px;
+            background-color: pink;
+            margin: 50px auto;
+        }
+          /* 盒子不规则，符合各种情况 */
+        .container > div {
+            display: inline-block;
+            background-color: darkgreen;
+        }
+        .box1 {
+           /* 等宽高  */
+            width: 250px;
+            height: 250px;
+        }
+        .box2 {
+            /* 宽长高长超250 */
+            width: 300px;
+            height: 300px;
+        }
+        .box3 {
+            /* 宽小于250 高超过250 */
+            width: 200px;
+            height: 300px;
+        }
+        .box4 {
+            /* 宽大于250 高小于250 */
+            width: 300px;
+            height: 200px;
+        }
+        .box5 {
+            /* 宽高都小于250 */
+            width: 200px;
+            height: 200px;
+        }
+
+        /* 模拟部分 */
+
+        .canvas {
+            position: relative;
+            width: 1200px;
+            height: 800px;
+            background-color: skyblue;
+            margin: 50px auto;
+        }
+        .canvas > div {
+            position: absolute;
+            background-color: orange;
+        }
+    </style>
+</head>
+<body>
+    <!-- 暂时没有了解canvas的知识，先用定位来进行模拟
+     需求分析 ，正常流布局 -- 同一行能拍下就拍，排不下就进行换行
+     先用一个大盒子查看正常流的表现 -->
+     <!-- 排布好之后，切换box顺序，看看各种情况 这个过程自己操作~-->
+     <main>
+
+         <section>
+             <h1>探索inline-block正常流过程</h1>
+             <div class="container">
+                 <div class="box2">2</div>
+                 <div class="box4">4</div>
+                 <div class="box1">1</div>
+                 <div class="box5">5</div>
+                 <div class="box3">3</div>
+             </div>
+         </section>
+         <section>
+             <h1>用position模拟正常流行为</h1>
+             <div class="canvas">
+                 <div class="box2">2</div>
+                 <div class="box4">4</div>
+                 <div class="box1">1</div>
+                 <div class="box5">5</div>
+                 <div class="box3">3</div>
+             </div>
+         </section>
+     </main>
+
+    <!-- 通过几次切换顺序之后，可以得出inline-block正常流的具体规律
+        1 横向排列时，在父元素内自左向右排列，高度不一致时，同一排中所以盒子底部跟最高的盒子对齐
+        2 排布不下时，自动换行，紧贴左侧和上一行底部
+        通过js对canvas中模拟的正常流盒子进行排列
+    -->
+    <script>
+        // test arr.reduce 
+        let arr = [1,5,6,8];
+        arr = arr.reduce((pre,cur)=> {
+            return pre +cur;
+        },0)
+        console.log(arr,'--------->arr');
+
+        // 父类盒子
+        class FatherBos {
+            constructor(ctx) {
+                this.width = ctx.width;  // 宽，
+                this.height = ctx.height; // 高
+                this.className = ctx.className; // 类名
+                this.curRow = 1;  // 当前行数
+                this.childBox = []; // 当前行存有的元素
+                this.curRowWidth = 0; // 当前行已占宽度
+                this.childBoxTotalHeight = 0; // 当前所有子元素合计高度
+                this.rowHightestChild = 0;  // 当前行 最高子元素的高度
+            }
+            // FIXME 获取当前行所有子元素宽度已占用宽度 优化也在加入新的childBox进行比对
+
+            /* get curRowWidth () {
+                // 所有当前行元素的宽
+                let widthArr = this.childBox.map(childBox => {
+                    return childBox.width;
+                })
+                // 所有当前行元素的宽的和
+                var totalWidth = widthArr.reduce((pre,cur) => {
+                    return pre + cur;
+                })
+                return this.curRowWidth = totalWidth;
+            } */
+
+            // FIXME  优化一下 避免每次都计算，可以在push子元素时，就进行比对
+
+            /* get rowHightestChild () {
+                let max = this.childBox[0].height;
+                let HeightArr = this.childBox.map((childBox)=>{
+                    return childBox.height;
+                })
+                for(let height of HeightArr) {
+                    if(max <= height ) {
+                        max = height
+                    }
+                }
+                return max;
+            } */
+            
+
+            // push 方法添加子元素
+            push(childBox) {
+                if(childBox.height > this.rowHightestChild) {
+                    this.rowHightestChild = childBox.height;
+                }
+                // 当前行已占宽度
+                let curRowWidth = this.curRowWidth;
+                 // 如果大于当前宽度 + 加入子盒子的宽度  > 父盒子宽度
+                if(curRowWidth + childBox.width > this.width) {
+                    console.log(childBox.className,'----->className');
+                    childBox.x = 0;
+                    this.childBoxTotalHeight += this.rowHightestChild; // 这里得先加上
+                    childBox.y = this.childBoxTotalHeight;
+                    this.curRow += 1;
+                    this.childBox = [childBox];
+                    this.curRowWidth = childBox.width;
+                } else {
+                    console.log(this.curRowWidth,'-------->curRowWidth');
+                    childBox.x = this.curRowWidth;
+                    childBox.y = this.childBoxTotalHeight;
+                    this.curRowWidth += childBox.width;
+                }
+                return new Promise(resolve => {
+                    resolve(childBox);
+                })
+            }
+            sortChildBox() {
+                if(this.childBox.length === 0) return;
+                let childBox = this.childBox;
+                for(let i = 0 ; i < childBox.length ; i++ ) {
+                    childBox[0]
+                }
+            }
+        }
+        // 每一个子盒子，应该在创建时有一个排序，实际创建应该是独立的，那么计数工作在外部进行
+        class ChildBox {
+            constructor(ctx) {
+                this.width = ctx.width;
+                this.height = ctx.height;
+                this.className = ctx.className;
+            }
+        }
+        
+      // 1、先创建一个5个盒子 与上面宽高一致
+      
+      const fatherBox = new FatherBos({
+          width: document.querySelector('.canvas').offsetWidth,
+          height: document.querySelector('.canvas').offsetHeight,
+          className: 'canvas',
+          
+      })
+      
+      let boxs = document.querySelectorAll('.canvas > div'); // node集不能直接用arr方法
+      console.log(boxs,'--------->boxs');
+      let childBoxs = [];
+      boxs.forEach(box => {
+        console.dir(box, '------>box-selector');
+        childBoxs.push({
+            width: box.offsetWidth,
+            height: box.offsetHeight,
+            className: box.className,
+        })
+      })
+
+      childBoxs.forEach(childBox => {
+        console.log(childBox, '---------->result--- childBox');
+        fatherBox.push(childBox).then(childBox => {
+            document.querySelector(`.${fatherBox.className}>.${childBox.className}`).style.left = childBox.x +'px';
+            document.querySelector(`.${fatherBox.className}>.${childBox.className}`).style.top = childBox.y +'px';
+        })
+      });
+    </script>
+</body>
+</html>
